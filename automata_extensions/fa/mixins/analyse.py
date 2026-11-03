@@ -14,7 +14,7 @@ distinguabilité des états, minimisation.
   l'algorithme des tables (Moore), qui suppose un automate
   **déterministe et complet** ; ils ne sont donc définis que pour un
   DFA complet (voir `is_complete`). Pour un DFA incomplet, complétez-le
-  d'abord (`ConversionsMixin.complete`, prévu en phase 3).
+  d'abord avec `complete()` (voir `ConversionsMixin`).
 
 Ces algorithmes sont volontairement pédagogiques : pas d'optimisation
 de type Hopcroft, pas de mémoïsation superflue.
@@ -112,13 +112,12 @@ class AnalyseMixin:
             raise NotImplementedError(
                 f"{nom_methode}() n'est implémenté que pour un DFA dans "
                 "cette version pédagogique (déterminisez d'abord avec "
-                "to_dfa(), prévu en phase 3)."
+                "to_dfa())."
             )
         if not self.is_complete():
             raise ValueError(
                 f"{nom_methode}() nécessite un DFA complet ; complétez-le "
-                "d'abord (voir ConversionsMixin.complete(), prévu en "
-                "phase 3)."
+                "d'abord avec complete()."
             )
 
     def distinguishable_states(self):

@@ -64,7 +64,8 @@ tests/
 ├── conftest.py                  # fixtures (automates du poly d'exercices)
 ├── test_dfa_algorithms.py       # tests de plomberie (phase 1)
 ├── test_mixins_analyse.py       # phase 2
-├── test_regex.py                # phase 3
+├── test_mixins_conversions.py   # phase 3a
+├── test_regex.py                # phase 3b
 ├── test_relations.py            # phase 4
 └── test_mixins_visualisation.py # phase 6
 ```
@@ -80,7 +81,8 @@ pytest tests/test_mixins_analyse.py -v # un mixin en particulier
 
 - [x] Phase 1 — squelette, `ExtendedFA`, `ExtendedDFA/NFA/GNFA`, `conftest.py`
 - [x] Phase 2 — mixin analyse (accessibilité, trim, distinguabilité, minimisation)
-- [ ] Phase 3 — mixin conversions (to_dfa, to_regex, epsilon-transitions)
+- [x] Phase 3a — conversions : fermeture epsilon, remove_epsilon_transitions, determinize/to_dfa, complete
+- [ ] Phase 3b — conversions : to_regex, to_regex_optimum, to_regex_arden, reverse, brzozowski_minimize, Thompson
 - [ ] Phase 4 — opérations et relations (produit, union, équivalence...)
 - [ ] Phase 5 — mixin grammaire
 - [ ] Phase 6 — mixin visualisation (dot, svg, tikz)

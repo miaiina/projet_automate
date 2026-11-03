@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from automata.fa.nfa import NFA
 
-from .fa import ExtendedFA
+from .fa import ExtendedFA, _as_set
 from .mixins.analyse import AnalyseMixin
 from .mixins.conversions import ConversionsMixin
 from .mixins.grammaire import GrammaireMixin
@@ -53,13 +53,8 @@ class ExtendedNFA(
                     transitions[state][symbol] = restants
         return transitions
 
-
-def _as_set(targets):
-    """Les transitions d'un NFA sont censées associer un ensemble
-    d'états à chaque symbole, mais les exemples du poly (voir
-    `exemple_automates.py`) utilisent parfois directement une chaîne
-    comme '1' pour un seul état cible. Cette fonction uniformise les
-    deux cas."""
-    if isinstance(targets, str):
-        return {targets}
-    return set(targets)
+    def eliminate_lambda(self):
+        """Redirige vers `remove_epsilon_transitions()` : la méthode
+        d'origine d'automata-lib échoue sur ExtendedNFA (voir la
+        documentation du projet)."""
+        return self.remove_epsilon_transitions()

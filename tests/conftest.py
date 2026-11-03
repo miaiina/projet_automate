@@ -141,3 +141,37 @@ def nfa_fig_8_1_a():
         initial_state='0',
         final_states={'1', '2', '3', '4'},
     )
+
+
+@pytest.fixture
+def nfa_epsilon():
+    """NFA avec une VRAIE epsilon-transition (clé "" : convention
+    d'automata-lib), repris de la documentation du projet.
+
+    Langage reconnu : a* | a+b+ (mots "", "a", "aa", "ab", "aab", "abb"
+    acceptés ; "b", "ba", "aba", "bb" rejetés)."""
+    return ExtendedNFA(
+        states={'p', 'q', 'r'},
+        input_symbols={'a', 'b'},
+        transitions={
+            'p': {'a': {'p', 'q'}, '': {'r'}},
+            'q': {'b': {'q'}},
+            'r': {'a': {'r'}},
+        },
+        initial_state='p',
+        final_states={'q', 'r'},
+    )
+
+
+@pytest.fixture
+def dfa_partiel():
+    """DFA partiel (allow_partial=True) : un seul état '0', avec
+    seulement la transition 'a' (boucle). Langage : a*."""
+    return ExtendedDFA(
+        states={'0'},
+        input_symbols={'a', 'b'},
+        transitions={'0': {'a': '0'}},
+        initial_state='0',
+        final_states={'0'},
+        allow_partial=True,
+    )

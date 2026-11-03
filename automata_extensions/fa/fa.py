@@ -20,6 +20,19 @@ from __future__ import annotations
 from automata.fa.fa import FA
 
 
+def _as_set(targets):
+    """Uniformise une valeur de transition de NFA en ensemble d'états.
+
+    Les transitions d'un NFA associent un ensemble d'états à chaque
+    symbole, mais les exemples du poly (voir `exemple_automates.py`)
+    utilisent parfois directement une chaîne comme '1' pour un seul état
+    cible. Cette fonction accepte les deux écritures.
+    """
+    if isinstance(targets, str):
+        return {targets}
+    return set(targets)
+
+
 class ExtendedFA(FA):
     """Interface commune utilisée par tous les mixins de l'extension."""
 
