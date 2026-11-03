@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Environnements virtuels (conda ou venv), créés par les scripts setup_*
+automate-env-clean/
+automate-env-pip/
+.venv/
+venv/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Rendus de visualisation générés localement (dot/svg/png/pdf)
+*.dot
+*.svg
+*.png
+*.pdf
+!Exemples.pdf
+!TD3.pdf
+!TD4.pdf
+!TD5.pdf
+!Cours06.pdf
+
+# Divers
+.DS_Store

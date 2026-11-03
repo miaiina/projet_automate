@@ -1,0 +1,4 @@
+# automata-lib, pygraphviz, matplotlib, etc. sont déjà installés par
+# setup_avec_conda_automata.py / setup_sans_conda_automata.py.
+# Ce fichier liste uniquement ce qui manque pour ce projet.
+pytest>=8.0
