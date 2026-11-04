@@ -14,9 +14,10 @@ from itertools import product
 
 import pytest
 
-from automata_extensions.fa import ExtendedDFA
+from automata_extensions.fa import ExtendedDFA, ExtendedNFA
 from automata_extensions.regex.regex import (
-    Alt, Cat, EMPTY, EPS, Star, Sym, alt, cat, simplify, star, to_string,
+    Alt, Cat, EMPTY, EPS, Star, Sym, alt, cat, parse, simplify, star,
+    to_string,
 )
 
 
@@ -162,3 +163,113 @@ def test_simplify():
     assert simplify(cat(star(a), star(a))) == star(a)
     # Une expression déjà simple ne change pas.
     assert simplify(cat(a, alt(b, c))) == cat(a, alt(b, c))
+
+
+# ---------------------------------------------------------------------
+# Analyseur d'expressions (phase 3c)
+# ---------------------------------------------------------------------
+
+def test_parse_arbre():
+    assert parse("a") == a
+    assert parse("(a|b)*a") == cat(star(alt(a, b)), a)
+    assert parse("a+") == cat(a, star(a))
+    assert parse("a?") == alt(a, EPS)
+    assert parse("()") == EPS
+    assert parse("") == EPS
+    assert parse("a|") == alt(a, EPS)
+    assert parse("∅") == EMPTY
+    assert parse(".a", alphabet={'a', 'b'}) == cat(alt(a, b), a)
+
+
+def test_parse_et_to_string_sont_coherents():
+    for texte in ["a", "a|b", "ab", "a*", "(a|b)*a", "a(b|c)*", "(ab)*c",
+                  "a|()", "()", "∅"]:
+        assert to_string(parse(texte)) == texte
+
+
+def test_parse_erreurs():
+    for texte in ["(a", "a)", "*a", "+", "a&b", "a{2}", "a\\b"]:
+        with pytest.raises(ValueError):
+            parse(texte)
+    with pytest.raises(ValueError):
+        parse("c", alphabet={'a', 'b'})      # lettre hors de l'alphabet
+    with pytest.raises(ValueError):
+        parse(".a")                          # joker sans alphabet
+
+
+# ---------------------------------------------------------------------
+# Thompson : ExtendedNFA.from_regex (phase 3c)
+# ---------------------------------------------------------------------
+
+def from_regex_meme_langage(texte, alphabet=("a", "b"), longueur_max=6):
+    nfa = ExtendedNFA.from_regex(texte, input_symbols=set(alphabet))
+    return all(
+        nfa.accepts_input(mot) == accepte(texte, mot)
+        for mot in tous_les_mots(alphabet, longueur_max)
+    )
+
+
+def test_from_regex_meme_langage_que_re():
+    for texte in ["a", "ab", "a|b", "a*", "(a|b)*a", "a*b?", "(ab)+",
+                  "a|()", "()", "(a|b)*abb", ".a", "a.b", "((a|b)*)*",
+                  "(a*|b)*", "a+b+", "(a|b)?a"]:
+        assert from_regex_meme_langage(texte), texte
+
+
+def test_from_regex_langage_vide():
+    nfa = ExtendedNFA.from_regex("∅", input_symbols={'a', 'b'})
+    for mot in tous_les_mots(('a', 'b'), 4):
+        assert not nfa.accepts_input(mot)
+    union = ExtendedNFA.from_regex("a|∅", input_symbols={'a', 'b'})
+    assert union.accepts_input("a")
+    assert not union.accepts_input("")
+
+
+def test_from_regex_construit_un_extendednfa():
+    nfa = ExtendedNFA.from_regex("a|b", input_symbols={'a', 'b'})
+    assert isinstance(nfa, ExtendedNFA)
+    assert len(nfa.final_states) == 1
+
+
+def test_from_regex_alphabet_deduit_de_lexpression():
+    nfa = ExtendedNFA.from_regex("ab|c")
+    assert nfa.input_symbols == {'a', 'b', 'c'}
+    assert nfa.accepts_input("c")
+
+
+def test_thompson_nombre_detats():
+    # Thompson : 2 états par lettre ou mot vide, 2 de plus par union ou
+    # étoile, les concaténations n'en ajoutent pas.
+    def taille(texte):
+        return len(ExtendedNFA.from_regex(
+            texte, input_symbols={'a', 'b'}).states)
+    assert taille("a") == 2
+    assert taille("()") == 2
+    assert taille("ab") == 4
+    assert taille("a|b") == 6
+    assert taille("a*") == 4
+
+
+def test_from_regex_erreurs():
+    for texte in ["(a", "a)", "*a", "a&b", "a{2}", "c"]:
+        with pytest.raises(ValueError):
+            ExtendedNFA.from_regex(texte, input_symbols={'a', 'b'})
+    with pytest.raises(ValueError):
+        ExtendedNFA.from_regex(".a")
+
+
+# ---------------------------------------------------------------------
+# Aller-retour : automate -> expression -> automate
+# ---------------------------------------------------------------------
+
+def test_aller_retour_automate_regex_automate(
+    dfa_fig_3_1_a, dfa_fig_6_1_a, dfa_table_6_1_a, dfa_mod3, dfa_vide,
+    dfa_mot_vide_seul, nfa_fig_7_1_a, nfa_epsilon,
+):
+    for automate in (dfa_fig_3_1_a, dfa_fig_6_1_a, dfa_table_6_1_a, dfa_mod3,
+                     dfa_vide, dfa_mot_vide_seul, nfa_fig_7_1_a, nfa_epsilon):
+        retour = ExtendedNFA.from_regex(
+            automate.to_regex_optimum(), input_symbols=automate.input_symbols
+        )
+        for mot in tous_les_mots(automate.input_symbols, 6):
+            assert automate.accepts_input(mot) == retour.accepts_input(mot), mot

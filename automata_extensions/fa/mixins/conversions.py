@@ -19,7 +19,12 @@ Phase 3b (automate -> expression régulière) :
   ordres d'élimination, simplifient, et gardent l'expression la plus
   courte.
 
-Phase 3c (à venir) : `reverse`, `brzozowski_minimize`, Thompson.
+Phase 3c :
+- `reverse` : automate du langage miroir ;
+- `brzozowski_minimize` : minimisation par double inversion et
+  déterminisation ;
+- la construction de Thompson (regex -> NFA) est `ExtendedNFA.from_regex`
+  (voir `nfa.py` et `regex/regex.py`).
 
 Les expressions écrites utilisent la syntaxe d'automata-lib : `|`
 (union), `*`, `()` (mot vide). Le langage vide s'écrit `∅`.
@@ -142,11 +147,18 @@ class ConversionsMixin:
         """
         if isinstance(self, DFA):
             return self
+        return self._determinize_depuis({self.initial_state})
 
+    def _determinize_depuis(self, etats_initiaux):
+        """Construction par sous-ensembles à partir d'un ENSEMBLE d'états
+        initiaux (le sous-ensemble de départ est la fermeture epsilon de
+        cet ensemble). Sert à `determinize` (un seul état initial) et à
+        `brzozowski_minimize` (plusieurs). Même résultat et même
+        complexité que `determinize`."""
         from ..dfa import ExtendedDFA  # import local : évite un cycle
 
         symboles = set(self.input_symbols) - {EPSILON}
-        initial = frozenset(self.epsilon_closure(self.initial_state))
+        initial = frozenset(self.epsilon_closure_of_set(etats_initiaux))
         transitions = {}
         a_traiter = [initial]
         while a_traiter:
@@ -412,3 +424,66 @@ class ConversionsMixin:
         courte. Même complexité que `to_regex_optimum()`."""
         self._verifier_symboles_pour_regex()
         return self._meilleure_expression(self._resoudre_arden)
+
+    # ------------------------------------------------------------------
+    # Miroir et minimisation de Brzozowski
+    # ------------------------------------------------------------------
+
+    def reverse(self):
+        """NFA du langage miroir (les mots lus à l'envers).
+
+        On retourne toutes les transitions (p --a--> q devient
+        q --a--> p), l'ancien état initial devient l'unique état final,
+        et un nouvel état initial est relié par epsilon à chaque ancien
+        état final. Le résultat est toujours un `ExtendedNFA`, même à
+        partir d'un DFA.
+
+        Complexité : O(|Q| + |E|).
+        """
+        from ..nfa import ExtendedNFA  # import local : évite un cycle
+
+        nouvel_initial = "init"
+        while nouvel_initial in self.states:
+            nouvel_initial += "'"
+
+        transitions = {etat: {} for etat in self.states}
+        transitions[nouvel_initial] = {}
+        for source, symbole, cible in self._labeled_edges():
+            transitions[cible].setdefault(symbole, set()).add(source)
+        for final in self.final_states:
+            transitions[nouvel_initial].setdefault(EPSILON, set()).add(final)
+
+        return ExtendedNFA(
+            states=set(self.states) | {nouvel_initial},
+            input_symbols=set(self.input_symbols) - {EPSILON},
+            transitions=transitions,
+            initial_state=nouvel_initial,
+            final_states={self.initial_state},
+        )
+
+    def brzozowski_minimize(self):
+        """DFA minimal complet du même langage, par l'algorithme de
+        Brzozowski : miroir, déterminisation, miroir, déterminisation.
+
+        Le miroir d'un automate a plusieurs états initiaux (les anciens
+        états finaux) ; on déterminise donc directement à partir de cet
+        ensemble, sans passer par l'état initial artificiel de
+        `reverse()` (qui se retrouverait dans le premier sous-ensemble
+        et créerait un état en double). La première déterminisation ne
+        garde que les états accessibles du miroir, ce qui élimine les
+        états inutiles ; la seconde donne directement l'automate minimal.
+
+        Fonctionne sur un DFA (même incomplet) comme sur un NFA, avec ou
+        sans epsilon-transitions. Les états du résultat sont des
+        ensembles d'ensembles d'états : peu lisibles, mais le nombre
+        d'états est celui du minimum.
+
+        Complexité : exponentielle dans le pire cas (deux
+        déterminisations successives).
+        """
+        def miroir_deterministe(automate):
+            return automate.reverse()._determinize_depuis(
+                automate.final_states
+            )
+
+        return miroir_deterministe(miroir_deterministe(self))

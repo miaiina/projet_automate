@@ -245,3 +245,198 @@ def to_string(expression):
         else _avec_parentheses(interieur)
     )
     return texte + "*"
+
+
+# ----------------------------------------------------------------------
+# Analyse (texte -> arbre)
+# ----------------------------------------------------------------------
+
+_OPERATEURS_NON_PRIS_EN_CHARGE = set("&^~{}\\")
+
+
+def lettres(expression):
+    """Ensemble des lettres qui apparaissent dans l'expression.
+    Complexité : O(taille de l'expression)."""
+    if isinstance(expression, Sym):
+        return {expression.char}
+    if isinstance(expression, (Alt, Cat)):
+        resultat = set()
+        for partie in expression.parts:
+            resultat |= lettres(partie)
+        return resultat
+    if isinstance(expression, Star):
+        return lettres(expression.inner)
+    return set()
+
+
+class _Analyseur:
+    """Analyseur par descente récursive. Grammaire :
+
+        alternative   :=  concatenation ( '|' concatenation )*
+        concatenation :=  repetition*          (vide : le mot vide)
+        repetition    :=  atome ( '*' | '+' | '?' )*
+        atome         :=  lettre | '.' | '∅' | '(' alternative ')'
+
+    `()` est le mot vide. `.` désigne n'importe quelle lettre de
+    l'alphabet (qui doit alors être donné). Les opérateurs `&`, `^`, `~`,
+    `{}` d'automata-lib ne sont pas pris en charge.
+    """
+
+    def __init__(self, texte, alphabet):
+        self.texte = texte
+        self.i = 0
+        self.alphabet = None if alphabet is None else sorted(alphabet)
+
+    def _erreur(self, message):
+        raise ValueError(
+            f"{message} (position {self.i} dans {self.texte!r})"
+        )
+
+    def _courant(self):
+        return self.texte[self.i] if self.i < len(self.texte) else None
+
+    def analyser(self):
+        expression = self._alternative()
+        if self._courant() is not None:
+            self._erreur("parenthèse fermante sans parenthèse ouvrante")
+        return expression
+
+    def _alternative(self):
+        termes = [self._concatenation()]
+        while self._courant() == "|":
+            self.i += 1
+            termes.append(self._concatenation())
+        return alt(*termes)
+
+    def _concatenation(self):
+        facteurs = []
+        while self._courant() not in (None, "|", ")"):
+            facteurs.append(self._repetition())
+        return cat(*facteurs)
+
+    def _repetition(self):
+        expression = self._atome()
+        while self._courant() in ("*", "+", "?"):
+            operateur = self._courant()
+            self.i += 1
+            if operateur == "*":
+                expression = star(expression)
+            elif operateur == "+":
+                expression = cat(expression, star(expression))
+            else:
+                expression = alt(expression, EPS)
+        return expression
+
+    def _atome(self):
+        c = self._courant()
+        if c == "(":
+            self.i += 1
+            expression = self._alternative()
+            if self._courant() != ")":
+                self._erreur("parenthèse ouvrante jamais fermée")
+            self.i += 1
+            return expression
+        if c in ("*", "+", "?"):
+            self._erreur(f"l'opérateur {c!r} n'a rien à répéter")
+        if c in _OPERATEURS_NON_PRIS_EN_CHARGE:
+            self._erreur(f"l'opérateur {c!r} n'est pas pris en charge")
+        if c == "∅":
+            self.i += 1
+            return EMPTY
+        if c == ".":
+            if self.alphabet is None:
+                self._erreur(
+                    "le joker '.' demande de préciser l'alphabet "
+                    "(input_symbols)"
+                )
+            self.i += 1
+            return alt(*[Sym(lettre) for lettre in self.alphabet])
+        if self.alphabet is not None and c not in self.alphabet:
+            self._erreur(f"la lettre {c!r} n'est pas dans l'alphabet")
+        self.i += 1
+        return Sym(c)
+
+
+def parse(texte, alphabet=None):
+    """Analyse une expression régulière écrite avec la syntaxe
+    d'automata-lib (sous-ensemble : lettres, `|`, `*`, `+`, `?`, `()`,
+    `.`) et renvoie son arbre. `∅` désigne le langage vide (extension :
+    c'est ce que produit `to_string`).
+
+    Si `alphabet` est donné, les lettres doivent lui appartenir et `.`
+    désigne n'importe laquelle d'entre elles. Lève `ValueError` en cas
+    d'erreur de syntaxe. Complexité : O(n) pour un texte de n caractères
+    (hors expansion de `.`).
+    """
+    return _Analyseur(texte, alphabet).analyser()
+
+
+# ----------------------------------------------------------------------
+# Construction de Thompson (arbre -> automate avec epsilon-transitions)
+# ----------------------------------------------------------------------
+
+class _ConstructeurThompson:
+    def __init__(self):
+        self.transitions = {}
+        self._compteur = 0
+
+    def _nouvel_etat(self):
+        nom = f"q{self._compteur}"
+        self._compteur += 1
+        self.transitions[nom] = {}
+        return nom
+
+    def _relier(self, source, symbole, cible):
+        self.transitions[source].setdefault(symbole, set()).add(cible)
+
+    def construire(self, expression):
+        """Renvoie (début, fin) du fragment associé à `expression`."""
+        if isinstance(expression, Empty):
+            return self._nouvel_etat(), self._nouvel_etat()
+        if isinstance(expression, (Eps, Sym)):
+            debut, fin = self._nouvel_etat(), self._nouvel_etat()
+            symbole = "" if isinstance(expression, Eps) else expression.char
+            self._relier(debut, symbole, fin)
+            return debut, fin
+        if isinstance(expression, Cat):
+            fragments = [self.construire(p) for p in expression.parts]
+            for (_, fin), (debut_suivant, _) in zip(fragments, fragments[1:]):
+                self._relier(fin, "", debut_suivant)
+            return fragments[0][0], fragments[-1][1]
+        if isinstance(expression, Alt):
+            debut, fin = self._nouvel_etat(), self._nouvel_etat()
+            for partie in expression.parts:
+                debut_p, fin_p = self.construire(partie)
+                self._relier(debut, "", debut_p)
+                self._relier(fin_p, "", fin)
+            return debut, fin
+        debut, fin = self._nouvel_etat(), self._nouvel_etat()
+        debut_i, fin_i = self.construire(expression.inner)
+        self._relier(debut, "", debut_i)
+        self._relier(debut, "", fin)
+        self._relier(fin_i, "", debut_i)
+        self._relier(fin_i, "", fin)
+        return debut, fin
+
+
+def thompson(expression):
+    """Construction de Thompson : renvoie (états, transitions, état
+    initial, état final) d'un automate avec epsilon-transitions (clé
+    `""`) qui reconnaît le langage de l'expression.
+
+    Chaque noeud de l'arbre produit des états neufs (`q0`, `q1`, ...) :
+    - lettre a, mot vide : deux états reliés par a (ou epsilon) ;
+    - langage vide : deux états sans transition ;
+    - concaténation : le final de chaque fragment est relié par epsilon
+      au début du suivant ;
+    - union : un nouveau début et une nouvelle fin, reliés par epsilon
+      aux fragments ;
+    - étoile : un nouveau début et une nouvelle fin, avec epsilon pour
+      entrer, sortir, et reboucler.
+
+    Complexité : O(n) états et transitions pour une expression de
+    taille n.
+    """
+    constructeur = _ConstructeurThompson()
+    debut, fin = constructeur.construire(expression)
+    return set(constructeur.transitions), constructeur.transitions, debut, fin

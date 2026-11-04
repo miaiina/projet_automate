@@ -16,6 +16,8 @@ import pytest
 from automata.fa.dfa import DFA
 from automata.fa.nfa import NFA
 
+from automata_extensions.fa import ExtendedDFA
+
 
 def tous_les_mots(alphabet, longueur_max):
     for longueur in range(longueur_max + 1):
@@ -184,3 +186,78 @@ def test_completer_puis_minimiser(dfa_partiel):
     minimal = dfa_partiel.complete().minimize()
     # a* : l'état '0' (final) et le puits sont distinguables.
     assert len(minimal.states) == 2
+
+
+# ---------------------------------------------------------------------
+# reverse (phase 3c)
+# ---------------------------------------------------------------------
+
+def test_reverse_reconnait_le_langage_miroir(
+    dfa_fig_3_1_a, dfa_fig_6_1_a, dfa_mod3, nfa_fig_7_1_a, nfa_epsilon,
+):
+    for automate in (dfa_fig_3_1_a, dfa_fig_6_1_a, dfa_mod3,
+                     nfa_fig_7_1_a, nfa_epsilon):
+        miroir = automate.reverse()
+        assert isinstance(miroir, NFA)
+        for mot in tous_les_mots(automate.input_symbols, 6):
+            assert (
+                automate.accepts_input(mot) == miroir.accepts_input(mot[::-1])
+            ), mot
+
+
+def test_reverse_deux_fois_redonne_le_langage(nfa_epsilon, dfa_fig_6_1_a):
+    assert meme_langage(nfa_epsilon, nfa_epsilon.reverse().reverse())
+    assert meme_langage(dfa_fig_6_1_a, dfa_fig_6_1_a.reverse().reverse())
+
+
+def test_reverse_choisit_un_nom_dinitial_neuf():
+    automate = ExtendedDFA(
+        states={'init', 'x'},
+        input_symbols={'a'},
+        transitions={'init': {'a': 'x'}, 'x': {'a': 'x'}},
+        initial_state='init',
+        final_states={'x'},
+    )
+    miroir = automate.reverse()
+    assert miroir.initial_state == "init'"
+    assert miroir.initial_state not in automate.states
+    assert miroir.final_states == {'init'}
+
+
+# ---------------------------------------------------------------------
+# brzozowski_minimize (phase 3c)
+# ---------------------------------------------------------------------
+
+def test_brzozowski_meme_langage_et_meme_taille_que_moore(
+    dfa_fig_3_1_a, dfa_fig_6_1_a, dfa_table_6_1_a, dfa_mod3,
+    nfa_fig_7_1_a, nfa_epsilon,
+):
+    # Deux algorithmes indépendants (Moore en phase 2, Brzozowski ici)
+    # doivent donner un automate minimal de même taille.
+    for automate in (dfa_fig_3_1_a, dfa_fig_6_1_a, dfa_table_6_1_a,
+                     dfa_mod3, nfa_fig_7_1_a, nfa_epsilon):
+        brz = automate.brzozowski_minimize()
+        assert isinstance(brz, DFA)
+        assert brz.is_complete()
+        assert meme_langage(automate, brz)
+        assert len(brz.states) == len(automate.determinize().minimize().states)
+
+
+def test_brzozowski_tailles_attendues(
+    dfa_fig_3_1_a, dfa_fig_6_1_a, dfa_table_6_1_a, dfa_mod3,
+    nfa_fig_7_1_a, nfa_epsilon,
+):
+    # Tailles calculées à la main (voir les commentaires des fixtures).
+    assert len(dfa_fig_3_1_a.brzozowski_minimize().states) == 3
+    assert len(dfa_fig_6_1_a.brzozowski_minimize().states) == 3
+    assert len(dfa_table_6_1_a.brzozowski_minimize().states) == 3
+    assert len(dfa_mod3.brzozowski_minimize().states) == 3
+    assert len(nfa_fig_7_1_a.brzozowski_minimize().states) == 4
+    assert len(nfa_epsilon.brzozowski_minimize().states) == 4
+
+
+def test_brzozowski_dfa_partiel(dfa_partiel):
+    minimal = dfa_partiel.brzozowski_minimize()
+    assert len(minimal.states) == 2          # a* : un état final + un puits
+    assert minimal.accepts_input("aaa")
+    assert not minimal.accepts_input("b")

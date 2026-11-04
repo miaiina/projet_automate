@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from automata.fa.nfa import NFA
 
+from ..regex.regex import lettres, parse, thompson
 from .fa import ExtendedFA, _as_set
 from .mixins.analyse import AnalyseMixin
 from .mixins.conversions import ConversionsMixin
@@ -66,3 +67,30 @@ class ExtendedNFA(
         d'origine d'automata-lib échoue sur ExtendedNFA (voir la
         documentation du projet)."""
         return self.remove_epsilon_transitions()
+
+    @classmethod
+    def from_regex(cls, regex, *, input_symbols=None):
+        """NFA (avec epsilon-transitions) reconnaissant le langage d'une
+        expression régulière, par la construction de Thompson.
+
+        Syntaxe acceptée : lettres, `|`, `*`, `+`, `?`, `()` (mot vide),
+        `.` (n'importe quelle lettre de `input_symbols`) et `∅` (langage
+        vide). Si `input_symbols` n'est pas donné, l'alphabet est formé
+        des lettres de l'expression. Lève `ValueError` en cas d'erreur de
+        syntaxe ou de lettre hors de l'alphabet.
+
+        Complexité : O(n) pour une expression de taille n.
+        """
+        expression = parse(regex, input_symbols)
+        alphabet = (
+            set(input_symbols) if input_symbols is not None
+            else lettres(expression)
+        )
+        etats, transitions, initial, final = thompson(expression)
+        return cls(
+            states=etats,
+            input_symbols=alphabet,
+            transitions=transitions,
+            initial_state=initial,
+            final_states={final},
+        )
