@@ -28,6 +28,14 @@ class ExtendedNFA(
             successors |= _as_set(targets)
         return successors
 
+    def _labeled_edges(self):
+        """Triplets (source, symbole, cible), epsilon-transitions
+        comprises (symbole `""`). Complexité : O(|Q| · |Σ| · d)."""
+        for etat, table in self.transitions.items():
+            for symbole, cibles in table.items():
+                for cible in _as_set(cibles):
+                    yield (etat, symbole, cible)
+
     def _build(self, states, transitions, initial_state, final_states):
         """Construit un nouvel ExtendedNFA."""
         return ExtendedNFA(

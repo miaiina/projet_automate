@@ -57,7 +57,7 @@ automata_extensions/
 │       ├── grammaire.py       # automate <-> grammaire régulière
 │       └── visualisation.py   # dot, svg, tikz...
 ├── pda/   # squelette, phase 7 (algorithmes non précisés)
-├── regex/ # squelette, phase 7
+├── regex/ # regex.py : arbre d'expressions (phase 3b) ; mixins/ vide, phase 7
 └── tm/    # squelette, phase 7
 
 tests/
@@ -65,7 +65,7 @@ tests/
 ├── test_dfa_algorithms.py       # tests de plomberie (phase 1)
 ├── test_mixins_analyse.py       # phase 2
 ├── test_mixins_conversions.py   # phase 3a
-├── test_regex.py                # phase 3b
+├── test_regex.py                # phase 3b (to_regex, Arden, arbre d'expressions)
 ├── test_relations.py            # phase 4
 └── test_mixins_visualisation.py # phase 6
 ```
@@ -82,7 +82,8 @@ pytest tests/test_mixins_analyse.py -v # un mixin en particulier
 - [x] Phase 1 — squelette, `ExtendedFA`, `ExtendedDFA/NFA/GNFA`, `conftest.py`
 - [x] Phase 2 — mixin analyse (accessibilité, trim, distinguabilité, minimisation)
 - [x] Phase 3a — conversions : fermeture epsilon, remove_epsilon_transitions, determinize/to_dfa, complete
-- [ ] Phase 3b — conversions : to_regex, to_regex_optimum, to_regex_arden, reverse, brzozowski_minimize, Thompson
+- [x] Phase 3b — automate -> regex : to_regex, to_regex_arden, to_regex_optimum, to_regex_arden_optimum (arbre d'expressions dans `regex/regex.py`)
+- [ ] Phase 3c — reverse, brzozowski_minimize, Thompson (from_regex)
 - [ ] Phase 4 — opérations et relations (produit, union, équivalence...)
 - [ ] Phase 5 — mixin grammaire
 - [ ] Phase 6 — mixin visualisation (dot, svg, tikz)

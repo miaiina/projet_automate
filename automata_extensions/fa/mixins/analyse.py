@@ -23,6 +23,8 @@ from itertools import combinations
 
 from automata.fa.dfa import DFA
 
+from ..fa import _cle_tri
+
 
 class AnalyseMixin:
     """Mixin d'analyse structurelle, à utiliser avec `ExtendedFA`."""
@@ -159,7 +161,7 @@ class AnalyseMixin:
         'X' si la paire est distinguable. Complexité : celle de
         `distinguishable_states`."""
         distinguables = self.distinguishable_states()
-        etats = sorted(self.states, key=str)
+        etats = sorted(self.states, key=_cle_tri)
         lignes = []
         for i, e2 in enumerate(etats[1:], start=1):
             marques = [
@@ -180,7 +182,7 @@ class AnalyseMixin:
         `distinguishable_states` + O(|Q|²) pour regrouper."""
         distinguables = self.distinguishable_states()
         classes = []
-        for etat in sorted(self.states, key=str):
+        for etat in sorted(self.states, key=_cle_tri):
             for classe in classes:
                 representant = next(iter(classe))
                 if frozenset((etat, representant)) not in distinguables:
@@ -202,7 +204,7 @@ class AnalyseMixin:
         """Nouvel automate minimal, par quotient selon les classes
         d'équivalence calculées par `equivalence_classes` (algorithme
         de Moore). Le représentant de chaque classe est choisi comme
-        `min(classe, key=str)`, pour un résultat déterministe et
+        `min(classe, key=_cle_tri)`, pour un résultat déterministe et
         reproductible d'un appel à l'autre.
 
         Complexité : celle de `equivalence_classes` + O(|Q| · |Σ|)
@@ -211,7 +213,7 @@ class AnalyseMixin:
         self._verifier_dfa_complet("minimize")
         classes = self.equivalence_classes()
         representant = {
-            etat: min(classe, key=str)
+            etat: min(classe, key=_cle_tri)
             for classe in classes
             for etat in classe
         }

@@ -33,6 +33,19 @@ def _as_set(targets):
     return set(targets)
 
 
+def _cle_tri(etat):
+    """Clé de tri reproductible pour des états quelconques.
+
+    `sorted(..., key=str)` n'est pas reproductible d'une exécution à
+    l'autre pour des états de type `frozenset` (l'ordre d'affichage des
+    éléments d'un ensemble dépend du hachage) ; cette clé trie d'abord
+    les éléments internes.
+    """
+    if isinstance(etat, (frozenset, set)):
+        return "{" + ",".join(sorted(_cle_tri(e) for e in etat)) + "}"
+    return str(etat)
+
+
 class ExtendedFA(FA):
     """Interface commune utilisée par tous les mixins de l'extension."""
 
@@ -81,6 +94,19 @@ class ExtendedFA(FA):
         """
         raise NotImplementedError(
             "_filtered_transitions doit être implémenté par la sous-classe "
+            "concrète (ExtendedDFA ou ExtendedNFA)."
+        )
+
+    def _labeled_edges(self):
+        """Énumère les transitions sous la forme (source, symbole,
+        cible), une par triplet ; le symbole vaut `""` pour une
+        epsilon-transition.
+
+        À implémenter dans chaque sous-classe concrète (un DFA a une
+        seule cible par symbole, un NFA un ensemble de cibles).
+        """
+        raise NotImplementedError(
+            "_labeled_edges doit être implémenté par la sous-classe "
             "concrète (ExtendedDFA ou ExtendedNFA)."
         )
 

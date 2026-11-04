@@ -33,6 +33,12 @@ class ExtendedDFA(
         Complexité : O(|Σ|)."""
         return set(self.transitions.get(state, {}).values())
 
+    def _labeled_edges(self):
+        """Triplets (source, symbole, cible). Complexité : O(|Q| · |Σ|)."""
+        for etat, table in self.transitions.items():
+            for symbole, cible in table.items():
+                yield (etat, symbole, cible)
+
     def _build(self, states, transitions, initial_state, final_states):
         """Construit un nouvel ExtendedDFA. `allow_partial=True` car
         les automates produits par `trim()` ou des quotients peuvent

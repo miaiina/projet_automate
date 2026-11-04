@@ -175,3 +175,48 @@ def dfa_partiel():
         final_states={'0'},
         allow_partial=True,
     )
+
+
+@pytest.fixture
+def dfa_mod3():
+    """DFA de la documentation : accepte les mots dont le nombre de 'a'
+    est un multiple de 3 (les 'b' ne changent pas d'état)."""
+    return ExtendedDFA(
+        states={'0', '1', '2'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '0': {'a': '1', 'b': '0'},
+            '1': {'a': '2', 'b': '1'},
+            '2': {'a': '0', 'b': '2'},
+        },
+        initial_state='0',
+        final_states={'0'},
+    )
+
+
+@pytest.fixture
+def dfa_vide():
+    """DFA dont le langage est vide (aucun état final)."""
+    return ExtendedDFA(
+        states={'0'},
+        input_symbols={'a', 'b'},
+        transitions={'0': {'a': '0', 'b': '0'}},
+        initial_state='0',
+        final_states=set(),
+    )
+
+
+@pytest.fixture
+def dfa_mot_vide_seul():
+    """DFA dont le langage est {epsilon} : l'état initial est final,
+    toute lettre mène à un état-puits."""
+    return ExtendedDFA(
+        states={'0', '1'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '0': {'a': '1', 'b': '1'},
+            '1': {'a': '1', 'b': '1'},
+        },
+        initial_state='0',
+        final_states={'0'},
+    )

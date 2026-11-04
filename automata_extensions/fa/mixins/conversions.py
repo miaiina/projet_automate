@@ -4,23 +4,39 @@ ConversionsMixin
 
 Conversions entre représentations d'automates.
 
-Phase 3a (ce fichier, actuellement) :
+Phase 3a :
 - `epsilon_closure`, `epsilon_closure_of_set`
 - `remove_epsilon_transitions`
 - `determinize` / `to_dfa` (construction par sous-ensembles)
 - `complete` (ajout d'un état-puits)
 
-Phase 3b (à venir) : `to_regex`, `to_regex_optimum`, `to_regex_arden`,
-`reverse`, `brzozowski_minimize`, construction de Thompson.
+Phase 3b (automate -> expression régulière) :
+- `to_regex` : élimination d'états, ordre lexicographique, sortie
+  volontairement non simplifiée (chaque étape reste lisible) ;
+- `to_regex_arden` : résolution du système d'équations par le lemme
+  d'Arden ;
+- `to_regex_optimum` et `to_regex_arden_optimum` : essaient plusieurs
+  ordres d'élimination, simplifient, et gardent l'expression la plus
+  courte.
+
+Phase 3c (à venir) : `reverse`, `brzozowski_minimize`, Thompson.
+
+Les expressions écrites utilisent la syntaxe d'automata-lib : `|`
+(union), `*`, `()` (mot vide). Le langage vide s'écrit `∅`.
 
 Convention d'automata-lib : une epsilon-transition est une transition
 étiquetée par la chaîne vide `""` (et non par un symbole 'ϵ' : celui-ci
 n'est qu'un symbole ordinaire pour la bibliothèque).
 """
+from itertools import permutations
+
 from automata.fa.dfa import DFA
 from automata.fa.nfa import NFA
 
-from ..fa import _as_set
+from ...regex.regex import (
+    EMPTY, EPS, Sym, alt, cat, simplify, star, to_string, verifier_lettre,
+)
+from ..fa import _as_set, _cle_tri
 
 EPSILON = ""
 
@@ -208,3 +224,191 @@ class ConversionsMixin:
             initial_state=self.initial_state,
             final_states=self.final_states,
         )
+
+    # ------------------------------------------------------------------
+    # Automate -> expression régulière
+    # ------------------------------------------------------------------
+
+    def _verifier_symboles_pour_regex(self):
+        """Lève ValueError si un symbole ne peut pas s'écrire dans une
+        expression régulière (voir `regex.verifier_lettre`)."""
+        for symbole in self.input_symbols:
+            if symbole != EPSILON:
+                verifier_lettre(symbole)
+
+    def _etiquette(self, symbole):
+        """Expression associée à une transition : `Eps` pour une
+        epsilon-transition, sinon la lettre."""
+        return EPS if symbole == EPSILON else Sym(symbole)
+
+    def _eliminer_etats(self, ordre, simplificateur=None):
+        """Élimination d'états : renvoie l'expression (noeud d'arbre) du
+        langage reconnu.
+
+        On ajoute un état de début (relié à l'état initial par epsilon)
+        et un état de fin (relié depuis chaque état final par epsilon),
+        puis on supprime les états de `ordre` un par un : pour chaque
+        chemin p -> s -> q passant par l'état supprimé s, on ajoute à
+        l'arête (p, q) l'expression R(p,s) · R(s,s)* · R(s,q). À la fin,
+        il ne reste que l'arête début -> fin.
+
+        `simplificateur`, s'il est donné, est appliqué à chaque arête
+        modifiée (utilisé par les variantes `optimum`).
+
+        Complexité : O(|Q|³) opérations sur des expressions (dont la
+        taille peut croître exponentiellement dans le pire cas).
+        """
+        table = {}
+        for source, symbole, cible in self._labeled_edges():
+            cle = (source, cible)
+            table[cle] = alt(table.get(cle, EMPTY), self._etiquette(symbole))
+
+        debut, fin = object(), object()
+        table[(debut, self.initial_state)] = EPS
+        for final in self.final_states:
+            table[(final, fin)] = alt(table.get((final, fin), EMPTY), EPS)
+
+        for supprime in ordre:
+            boucle = table.pop((supprime, supprime), None)
+            milieu = star(boucle) if boucle is not None else EPS
+            entrants = [
+                (p, r) for (p, q), r in table.items() if q == supprime
+            ]
+            sortants = [
+                (q, r) for (p, q), r in table.items() if p == supprime
+            ]
+            for p, _ in entrants:
+                del table[(p, supprime)]
+            for q, _ in sortants:
+                del table[(supprime, q)]
+            for p, r_entrant in entrants:
+                for q, r_sortant in sortants:
+                    nouveau = alt(
+                        table.get((p, q), EMPTY),
+                        cat(r_entrant, milieu, r_sortant),
+                    )
+                    if simplificateur is not None:
+                        nouveau = simplificateur(nouveau)
+                    table[(p, q)] = nouveau
+
+        return table.get((debut, fin), EMPTY)
+
+    def _resoudre_arden(self, ordre, simplificateur=None):
+        """Résolution du système d'équations du langage reconnu depuis
+        chaque état par le lemme d'Arden : X = A·X | B  donne  X = A*·B.
+
+        Pour chaque état i : X_i = somme des (lettre · X_j) pour les
+        transitions i -> j, plus le mot vide si i est final. On élimine
+        les inconnues dans l'ordre de `ordre` (méthode de Gauss-Jordan) ;
+        à la fin, X_initial est l'expression cherchée.
+
+        Complexité : O(|Q|³) opérations sur des expressions.
+        """
+        equations = {etat: {} for etat in self.states}
+        constantes = {
+            etat: (EPS if etat in self.final_states else EMPTY)
+            for etat in self.states
+        }
+        for source, symbole, cible in self._labeled_edges():
+            equations[source][cible] = alt(
+                equations[source].get(cible, EMPTY), self._etiquette(symbole)
+            )
+
+        def appliquer(expression):
+            return simplificateur(expression) if simplificateur else expression
+
+        for k in ordre:
+            auto = equations[k].pop(k, None)
+            if auto is not None:
+                etoile = star(auto)
+                for j in equations[k]:
+                    equations[k][j] = appliquer(cat(etoile, equations[k][j]))
+                constantes[k] = appliquer(cat(etoile, constantes[k]))
+            for i in self.states:
+                if i == k or k not in equations[i]:
+                    continue
+                coefficient = equations[i].pop(k)
+                for j, reste in equations[k].items():
+                    equations[i][j] = appliquer(
+                        alt(equations[i].get(j, EMPTY), cat(coefficient, reste))
+                    )
+                constantes[i] = appliquer(
+                    alt(constantes[i], cat(coefficient, constantes[k]))
+                )
+        return constantes[self.initial_state]
+
+    def _ordre_lexicographique(self):
+        return sorted(self.states, key=_cle_tri)
+
+    def _ordres_candidats(self):
+        """Ordres d'élimination essayés par les variantes `optimum` :
+        toutes les permutations jusqu'à 6 états (au plus 720), sinon
+        trois ordres heuristiques (lexicographique, inverse, et par
+        nombre croissant de transitions entrantes x sortantes)."""
+        etats = self._ordre_lexicographique()
+        if len(etats) <= 6:
+            return [list(p) for p in permutations(etats)]
+        entrants = {e: 0 for e in etats}
+        sortants = {e: 0 for e in etats}
+        for source, _, cible in self._labeled_edges():
+            sortants[source] += 1
+            entrants[cible] += 1
+        par_degre = sorted(
+            etats, key=lambda e: (entrants[e] * sortants[e], _cle_tri(e))
+        )
+        return [etats, etats[::-1], par_degre]
+
+    def _meilleure_expression(self, methode):
+        """Applique `methode(ordre, simplificateur)` pour chaque ordre
+        candidat et garde l'expression écrite la plus courte (la
+        première en cas d'égalité)."""
+        meilleure = None
+        for ordre in self._ordres_candidats():
+            texte = to_string(simplify(methode(ordre, simplify)))
+            if meilleure is None or len(texte) < len(meilleure):
+                meilleure = texte
+        return meilleure
+
+    def to_regex(self):
+        """Expression régulière du langage, par élimination d'états dans
+        l'ordre lexicographique des états. La sortie n'est volontairement
+        pas simplifiée (pédagogique : chaque morceau correspond à une
+        étape de l'algorithme). Le langage vide donne `"∅"`.
+
+        Lève `ValueError` si un symbole de l'alphabet ne peut pas
+        s'écrire dans une expression régulière (voir
+        `regex.verifier_lettre`).
+
+        Complexité : celle de `_eliminer_etats`, soit O(|Q|³).
+        """
+        self._verifier_symboles_pour_regex()
+        return to_string(self._eliminer_etats(self._ordre_lexicographique()))
+
+    def to_regex_arden(self):
+        """Expression régulière du langage, par résolution du système
+        d'équations avec le lemme d'Arden (ordre lexicographique). Même
+        langage que `to_regex()`, mais en général une écriture différente.
+
+        Complexité : celle de `_resoudre_arden`, soit O(|Q|³).
+        """
+        self._verifier_symboles_pour_regex()
+        return to_string(self._resoudre_arden(self._ordre_lexicographique()))
+
+    def to_regex_optimum(self):
+        """Comme `to_regex()`, mais en essayant plusieurs ordres
+        d'élimination (voir `_ordres_candidats`) avec simplification des
+        expressions, et en gardant la plus courte. Aucune garantie
+        d'optimalité au-delà de 6 états.
+
+        Complexité : O(k · |Q|³) opérations sur des expressions, avec
+        k = min(|Q|!, ...) ordres essayés (k = 720 au plus).
+        """
+        self._verifier_symboles_pour_regex()
+        return self._meilleure_expression(self._eliminer_etats)
+
+    def to_regex_arden_optimum(self):
+        """Comme `to_regex_arden()`, mais avec plusieurs ordres de
+        résolution et simplification, en gardant l'expression la plus
+        courte. Même complexité que `to_regex_optimum()`."""
+        self._verifier_symboles_pour_regex()
+        return self._meilleure_expression(self._resoudre_arden)
