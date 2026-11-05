@@ -115,3 +115,22 @@ def test_print_pair_table_ne_leve_pas_derreur(dfa_fig_6_1_a, capsys):
     dfa_fig_6_1_a.print_pair_table()
     sortie = capsys.readouterr().out
     assert sortie.strip() != ""
+
+
+def test_minimize_keep_original_names_false_nomme_par_frozenset(dfa_fig_6_1_a):
+    minimal = dfa_fig_6_1_a.minimize(keep_original_names=False)
+    assert minimal.states == {
+        frozenset({'1'}), frozenset({'2'}), frozenset({'3', '4'}),
+    }
+    assert minimal.initial_state == frozenset({'1'})
+    assert minimal.final_states == {frozenset({'3', '4'})}
+
+
+def test_trim_dun_langage_vide_ne_garde_que_letat_initial_sans_transition(dfa_vide):
+    # dfa_vide boucle sur lui-même sur 'a' et 'b' mais n'a aucun état
+    # final : après trim, il reste l'état initial, sans aucune transition.
+    trimme = dfa_vide.trim()
+    assert trimme.states == {'0'}
+    assert trimme.initial_state == '0'
+    assert trimme.final_states == set()
+    assert not any(trimme.transitions.get('0', {}))

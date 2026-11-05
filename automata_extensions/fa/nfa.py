@@ -8,12 +8,16 @@ from .fa import ExtendedFA, _as_set
 from .mixins.analyse import AnalyseMixin
 from .mixins.conversions import ConversionsMixin
 from .mixins.grammaire import GrammaireMixin
+from .mixins.operations import OperationsMixin
+from .mixins.relations import RelationsMixin
 from .mixins.visualisation import VisualisationMixin
 
 
 class ExtendedNFA(
     AnalyseMixin,
     ConversionsMixin,
+    OperationsMixin,
+    RelationsMixin,
     GrammaireMixin,
     VisualisationMixin,
     ExtendedFA,

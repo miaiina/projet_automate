@@ -84,7 +84,14 @@ class AnalyseMixin:
         """
         utiles = self.useful_states()
         if self.initial_state not in utiles:
-            utiles = {self.initial_state}
+            # Langage vide : l'état initial seul, sans aucune transition
+            # (même pas une boucle sur lui-même).
+            return self._build(
+                states={self.initial_state},
+                transitions={self.initial_state: {}},
+                initial_state=self.initial_state,
+                final_states=set(),
+            )
         return self._build(
             states=utiles,
             transitions=self._filtered_transitions(utiles),
@@ -200,12 +207,14 @@ class AnalyseMixin:
             len(classe) == 1 for classe in self.equivalence_classes()
         )
 
-    def minimize(self):
+    def minimize(self, keep_original_names=True):
         """Nouvel automate minimal, par quotient selon les classes
         d'équivalence calculées par `equivalence_classes` (algorithme
-        de Moore). Le représentant de chaque classe est choisi comme
-        `min(classe, key=_cle_tri)`, pour un résultat déterministe et
-        reproductible d'un appel à l'autre.
+        de Moore). Avec `keep_original_names=True` (par défaut), chaque
+        classe est nommée par son représentant, choisi comme
+        `min(classe, key=_cle_tri)` pour un résultat reproductible ;
+        avec `keep_original_names=False`, chaque état du résultat est le
+        `frozenset` des états de sa classe.
 
         Complexité : celle de `equivalence_classes` + O(|Q| · |Σ|)
         pour reconstruire les transitions du quotient.
@@ -213,18 +222,23 @@ class AnalyseMixin:
         self._verifier_dfa_complet("minimize")
         classes = self.equivalence_classes()
         representant = {
-            etat: min(classe, key=_cle_tri)
+            etat: (
+                min(classe, key=_cle_tri) if keep_original_names
+                else frozenset(classe)
+            )
             for classe in classes
             for etat in classe
         }
-        nouveaux_etats = set(representant.values())
-        nouvelles_transitions = {
-            r: {
-                symbole: representant[self.transitions[r][symbole]]
+        nouvelles_transitions = {}
+        for classe in classes:
+            # Tous les états d'une classe ont des transitions
+            # équivalentes : on lit celles d'un état quelconque de la classe.
+            exemple = min(classe, key=_cle_tri)
+            nouvelles_transitions[representant[exemple]] = {
+                symbole: representant[self.transitions[exemple][symbole]]
                 for symbole in self.input_symbols
             }
-            for r in nouveaux_etats
-        }
+        nouveaux_etats = set(nouvelles_transitions)
         nouveaux_finals = {
             representant[etat] for etat in self.final_states
         }

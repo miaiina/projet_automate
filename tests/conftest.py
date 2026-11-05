@@ -220,3 +220,32 @@ def dfa_mot_vide_seul():
         initial_state='0',
         final_states={'0'},
     )
+
+
+@pytest.fixture
+def dfa_unaire():
+    """DFA sur l'alphabet {a} seulement : langage a*."""
+    return ExtendedDFA(
+        states={'0'},
+        input_symbols={'a'},
+        transitions={'0': {'a': '0'}},
+        initial_state='0',
+        final_states={'0'},
+    )
+
+
+@pytest.fixture
+def dfa_fini():
+    """DFA du langage fini {a, ab} (complet, avec un état-puits)."""
+    return ExtendedDFA(
+        states={'0', '1', '2', '3'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '0': {'a': '1', 'b': '3'},
+            '1': {'a': '3', 'b': '2'},
+            '2': {'a': '3', 'b': '3'},
+            '3': {'a': '3', 'b': '3'},
+        },
+        initial_state='0',
+        final_states={'1', '2'},
+    )
