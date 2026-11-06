@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from automata.fa.nfa import NFA
 
+from ..grammar.grammar import Grammar
 from ..regex.regex import lettres, parse, thompson
 from .fa import ExtendedFA, _as_set
 from .mixins.analyse import AnalyseMixin
@@ -97,4 +98,82 @@ class ExtendedNFA(
             transitions=transitions,
             initial_state=initial,
             final_states={final},
+        )
+
+    @classmethod
+    def from_grammar(cls, grammar, *, input_symbols=None):
+        """NFA reconnaissant le langage d'une grammaire régulière
+        (linéaire à droite).
+
+        Les états sont les non-terminaux (l'axiome est l'état initial),
+        plus un état final supplémentaire `F` et des états intermédiaires
+        quand une règle produit plusieurs lettres :
+        - A -> a B    donne la transition  A --a--> B ;
+        - A -> a      donne la transition  A --a--> F ;
+        - A -> w B    (mot w de plusieurs lettres) passe par des états
+          intermédiaires, un par lettre ;
+        - A -> B      donne une epsilon-transition  A --ε--> B ;
+        - A -> ε      rend A final.
+
+        `input_symbols` doit contenir tous les terminaux de la grammaire
+        (`ValueError` sinon) ; par défaut, ce sont exactement les
+        terminaux. Complexité : O(taille totale des règles).
+        """
+        terminaux = set(grammar.terminals)
+        alphabet = terminaux if input_symbols is None else set(input_symbols)
+        if not terminaux <= alphabet:
+            raise ValueError(
+                "Terminaux absents de input_symbols : "
+                f"{sorted(terminaux - alphabet)}"
+            )
+
+        etats = set(grammar.non_terminals)
+
+        def nom_frais(base):
+            nom = base
+            while nom in etats:
+                nom += "'"
+            etats.add(nom)
+            return nom
+
+        final = nom_frais("F")
+        finals = {final}
+        transitions = {}
+
+        def relier(source, symbole, cible):
+            transitions.setdefault(source, {}).setdefault(
+                symbole, set()
+            ).add(cible)
+
+        for regle in grammar.rules:
+            cible = regle.right if regle.right is not None else final
+            if regle.word == "":
+                if regle.right is None:
+                    finals.add(regle.left)
+                else:
+                    relier(regle.left, "", cible)
+                continue
+            courant = regle.left
+            for lettre in regle.word[:-1]:
+                suivant = nom_frais(f"{regle.left}.{lettre}")
+                relier(courant, lettre, suivant)
+                courant = suivant
+            relier(courant, regle.word[-1], cible)
+
+        for etat in etats:
+            transitions.setdefault(etat, {})
+        return cls(
+            states=etats,
+            input_symbols=alphabet,
+            transitions=transitions,
+            initial_state=grammar.start,
+            final_states=finals,
+        )
+
+    @classmethod
+    def from_grammar_string(cls, texte, *, input_symbols=None):
+        """NFA d'une grammaire écrite en texte au format classique, par
+        exemple `"S -> aS | b"` (voir `Grammar.from_string`)."""
+        return cls.from_grammar(
+            Grammar.from_string(texte), input_symbols=input_symbols
         )
