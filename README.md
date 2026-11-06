@@ -42,6 +42,27 @@ a = ExtendedDFA(
 a.accessible_states()   # une fois le mixin analyse implémenté (phase 2)
 ```
 
+## Visualisation (phase 6)
+
+```python
+a = ExtendedDFA(...)            # ou ExtendedNFA
+a                               # dans un notebook : l'automate est dessiné tout seul
+a.dot()                         # source DOT (texte pur)
+a.svg(); a.png(); a.pdf()       # rendus Graphviz (binaire `dot` requis)
+a.save("a.png")                 # .png .svg .pdf .dot .tex .tikz selon l'extension
+a.svg(highlight="aab")          # parcours du mot en rouge (DFA)
+a.tikz(); a.latex()             # TikZ / document LaTeX (se compile avec pdflatex)
+a.transition_table()            # table de transitions en texte
+a.execution_trace("aab")        # [('0','a','1'), ('1','a','2'), ('2','b','2')]
+
+from IPython.display import HTML
+HTML(a.animate("aab"))          # animation pas à pas (DFA)
+```
+
+Le rendu appelle directement le binaire `dot` (aucun paquet Python en plus,
+pas de conflit pygraphviz/manim). `a.show_diagram()` d'automata-lib reste
+disponible.
+
 ## Structure
 
 ```
@@ -57,7 +78,7 @@ automata_extensions/
 │       ├── operations.py      # produit, intersection, union, différence, complément, concaténation, étoile
 │       ├── relations.py       # vide/fini, plus court mot, inclusion, équivalence, isomorphisme
 │       ├── grammaire.py       # to_grammar, derivation_tree
-│       └── visualisation.py   # dot, svg, tikz...
+│       └── visualisation.py   # dot, svg/png/pdf, tikz/latex, table, trace, animation
 ├── grammar/ # grammar.py : Grammar, Rule, DerivationStep (phase 5)
 ├── pda/   # squelette, phase 7 (algorithmes non précisés)
 ├── regex/ # regex.py : arbre d'expressions, analyseur, Thompson (phases 3b, 3c) ; mixins/ vide, phase 7
@@ -90,5 +111,5 @@ pytest tests/test_mixins_analyse.py -v # un mixin en particulier
 - [x] Phase 3c — reverse, brzozowski_minimize, Thompson (`ExtendedNFA.from_regex`, analyseur dans `regex/regex.py`)
 - [x] Phase 4 — opérations (product, intersection, union, difference, symmetric_difference, complement, concatenation, kleene_star) et relations (is_empty, is_finite, shortest_word, is_included_in, is_equivalent, is_disjoint_from, is_isomorphic_to, contre-exemples)
 - [x] Phase 5 — grammaires régulières : `to_grammar`, `derivation_tree`, `ExtendedNFA.from_grammar` / `from_grammar_string` (paquet `automata_extensions/grammar/`)
-- [ ] Phase 6 — mixin visualisation (dot, svg, tikz)
+- [x] Phase 6 — visualisation : `dot`, `svg`/`png`/`pdf`/`save` (Graphviz), `tikz`/`latex`, `transition_table`, `execution_trace`, `animate`, affichage automatique en notebook
 - [ ] Phase 7 — squelettes pda/regex/tm (en attente de précisions)
