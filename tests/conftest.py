@@ -249,3 +249,120 @@ def dfa_fini():
         initial_state='0',
         final_states={'1', '2'},
     )
+
+
+@pytest.fixture
+def automate_cours_6():
+    """Automate du notebook Cours06 (8 états, un seul état final '3') :
+    sert à comparer la table des paires aux sorties enregistrées du cours."""
+    return ExtendedDFA(
+        states={'1', '2', '3', '4', '5', '6', '7', '8'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2', 'b': '6'},
+            '2': {'a': '7', 'b': '3'},
+            '3': {'a': '1', 'b': '3'},
+            '4': {'a': '3', 'b': '7'},
+            '5': {'a': '8', 'b': '6'},
+            '6': {'a': '3', 'b': '7'},
+            '7': {'a': '7', 'b': '5'},
+            '8': {'a': '7', 'b': '3'},
+        },
+        initial_state='1',
+        final_states={'3'},
+    )
+
+
+@pytest.fixture
+def automate_cours_6_bis():
+    """Deuxième automate du notebook Cours06 (7 états)."""
+    return ExtendedDFA(
+        states={'1', '2', '3', '4', '5', '6', '7'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2', 'b': '4'},
+            '2': {'a': '3', 'b': '5'},
+            '3': {'a': '3', 'b': '6'},
+            '4': {'a': '5', 'b': '4'},
+            '5': {'a': '6', 'b': '7'},
+            '6': {'a': '6', 'b': '7'},
+            '7': {'a': '7', 'b': '7'},
+        },
+        initial_state='1',
+        final_states={'1', '2', '3', '5', '6'},
+    )
+
+
+# ---------------------------------------------------------------------
+# Automates de TD3 (figures 3.1.b à 3.1.f), repris du notebook
+# ---------------------------------------------------------------------
+
+@pytest.fixture
+def automate_fig_3_1_b():
+    return ExtendedDFA(
+        states={'1', '2', '3'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2', 'b': '1'},
+            '2': {'a': '3', 'b': '2'},
+            '3': {'a': '3', 'b': '3'},
+        },
+        initial_state='1',
+        final_states={'3'},
+    )
+
+
+@pytest.fixture
+def automate_fig_3_1_c():
+    return ExtendedNFA(
+        states={'1', '2', '3'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2'},
+            '2': {'a': '3'},
+            '3': {'a': '3', 'b': '3'},
+        },
+        initial_state='1',
+        final_states={'3'},
+    )
+
+
+@pytest.fixture
+def automate_fig_3_1_d():
+    return ExtendedDFA(
+        states={'1', '2', '3'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2', 'b': '1'},
+            '2': {'a': '3', 'b': '2'},
+            '3': {'a': '1', 'b': '3'},
+        },
+        initial_state='1',
+        final_states={'2'},
+    )
+
+
+@pytest.fixture
+def automate_fig_3_1_e():
+    return ExtendedNFA(
+        states={'1', '2', '3'},
+        input_symbols={'a'},
+        transitions={'1': {'a': '2'}, '2': {'a': '3'}, '3': {'a': '1'}},
+        initial_state='1',
+        final_states={'2'},
+    )
+
+
+@pytest.fixture
+def automate_fig_3_1_f():
+    return ExtendedNFA(
+        states={'1', '2', '3'},
+        input_symbols={'a', 'b'},
+        transitions={
+            '1': {'a': '2', 'b': '3'},
+            '2': {'a': '3', 'b': '1'},
+            '3': {'a': '1', 'b': '2'},
+        },
+        initial_state='1',
+        final_states={'2'},
+    )

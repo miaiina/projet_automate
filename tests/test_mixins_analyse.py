@@ -134,3 +134,94 @@ def test_trim_dun_langage_vide_ne_garde_que_letat_initial_sans_transition(dfa_vi
     assert trimme.initial_state == '0'
     assert trimme.final_states == set()
     assert not any(trimme.transitions.get('0', {}))
+
+
+# ---------------------------------------------------------------------
+# Table des paires : sorties enregistrées du notebook Cours06
+# ---------------------------------------------------------------------
+
+TABLE_COURS_6 = (
+    "   1  2  3  4  5  6  7\n"
+    "2  X\n"
+    "3  X  X\n"
+    "4  X  X  X\n"
+    "5  .  X  X  X\n"
+    "6  X  X  X  .  X\n"
+    "7  X  X  X  X  X  X\n"
+    "8  X  .  X  X  X  X  X"
+)
+
+TABLE_COURS_6_AVEC_ROUNDS = (
+    "   1  2  3  4  5  6  7\n"
+    "2  1\n"
+    "3  0  0\n"
+    "4  1  1  0\n"
+    "5  .  1  0  1\n"
+    "6  1  1  0  .  1\n"
+    "7  2  1  0  1  1  1\n"
+    "8  1  .  0  1  1  1  1"
+)
+
+TABLE_COURS_6_BIS_AVEC_ROUNDS = (
+    "   1  2  3  4  5  6\n"
+    "2  1\n"
+    "3  1  .\n"
+    "4  0  0  0\n"
+    "5  2  1  1  0\n"
+    "6  2  1  1  0  .\n"
+    "7  0  0  0  1  0  0"
+)
+
+
+def test_pair_table_str_identique_a_la_sortie_du_cours(automate_cours_6):
+    assert automate_cours_6.pair_table_str(show_round=False) == TABLE_COURS_6
+    # show_round=False est la valeur par défaut.
+    assert automate_cours_6.pair_table_str() == TABLE_COURS_6
+
+
+def test_pair_table_str_avec_rounds_identique_a_la_sortie_du_cours(
+    automate_cours_6, automate_cours_6_bis,
+):
+    assert (
+        automate_cours_6.pair_table_str(show_round=True)
+        == TABLE_COURS_6_AVEC_ROUNDS
+    )
+    assert (
+        automate_cours_6_bis.pair_table_str(show_round=True)
+        == TABLE_COURS_6_BIS_AVEC_ROUNDS
+    )
+
+
+def test_print_pair_table_show_round(automate_cours_6, capsys):
+    automate_cours_6.print_pair_table(show_round=True)
+    assert capsys.readouterr().out == TABLE_COURS_6_AVEC_ROUNDS + "\n"
+
+
+def test_pair_table_numero_de_passage(automate_cours_6):
+    table = automate_cours_6.pair_table()
+    assert len(table) == 28                              # C(8, 2) paires
+    assert table[frozenset({'1', '5'})] is None          # équivalents
+    assert table[frozenset({'3', '1'})] == 0             # final / non final
+    # La paire (5,7) est marquée au passage 1 parce que les paires (5,6) et
+    # (7,8) qu'elle atteint sont marquées plus tôt dans le même passage.
+    assert table[frozenset({'5', '7'})] == 1
+    assert table[frozenset({'7', '1'})] == 2
+
+
+def test_distinguishable_states_vient_de_la_table_des_paires(automate_cours_6):
+    distinguables = automate_cours_6.distinguishable_states()
+    assert len(distinguables) == 25                      # 28 paires - 3 équivalentes
+    assert frozenset({'1', '5'}) not in distinguables
+    assert frozenset({'2', '8'}) not in distinguables
+    assert frozenset({'4', '6'}) not in distinguables
+
+
+def test_minimiser_les_automates_du_cours(automate_cours_6, automate_cours_6_bis):
+    assert sorted(map(sorted, automate_cours_6.equivalence_classes())) == [
+        ['1', '5'], ['2', '8'], ['3'], ['4', '6'], ['7'],
+    ]
+    assert len(automate_cours_6.minimize().states) == 5
+    assert sorted(map(sorted, automate_cours_6_bis.equivalence_classes())) == [
+        ['1'], ['2', '3'], ['4'], ['5', '6'], ['7'],
+    ]
+    assert len(automate_cours_6_bis.minimize().states) == 5

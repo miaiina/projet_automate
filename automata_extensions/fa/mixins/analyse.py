@@ -26,6 +26,12 @@ from automata.fa.dfa import DFA
 from ..fa import _cle_tri
 
 
+def _nom_court(etat):
+    """Nom d'un état pour l'affichage : lui-même pour une chaîne, sinon
+    son écriture reproductible."""
+    return etat if isinstance(etat, str) else _cle_tri(etat)
+
+
 class AnalyseMixin:
     """Mixin d'analyse structurelle, à utiliser avec `ExtendedFA`."""
 
@@ -129,59 +135,107 @@ class AnalyseMixin:
                 "d'abord avec complete()."
             )
 
-    def distinguishable_states(self):
-        """Ensemble des paires d'états distinguables, par l'algorithme
-        des tables (Moore) : on marque d'abord les paires (état final,
-        état non final), puis on propage — une paire (p, q) est
-        distinguable dès qu'il existe un symbole a tel que
-        (delta(p,a), delta(q,a)) est une paire déjà marquée distinguable.
+    def pair_table(self):
+        """Table des paires, par l'algorithme de remplissage de table
+        (Moore) : dictionnaire qui associe à chaque paire d'états
+        (un `frozenset` de deux états) le numéro du passage où elle a été
+        reconnue distinguable, ou `None` si les deux états sont
+        équivalents.
 
-        Complexité : O(|Q|² · |Σ|) dans cette version naïve (on refait
-        une passe complète sur toutes les paires tant qu'un changement
-        a eu lieu, sans l'optimisation en O(|Q| · |Σ|) de Hopcroft).
+        - Passage 0 : les paires (état final, état non final).
+        - Passage k >= 1 : une paire (p, q) est marquée dès qu'il existe
+          une lettre a telle que (delta(p,a), delta(q,a)) est déjà marquée.
+
+        Comme dans le cours, on parcourt les paires dans l'ordre
+        alphabétique (1,2), (1,3), ..., (2,3), ... et les lettres dans
+        l'ordre alphabétique, et une paire marquée pendant un passage est
+        immédiatement utilisable par les paires suivantes du même
+        passage : le numéro d'une paire peut donc être plus petit que la
+        longueur du plus court mot qui distingue ses deux états.
+
+        Complexité : O(|Q|² · |Σ|) par passage, au plus |Q|² passages
+        (version pédagogique, sans l'optimisation de Hopcroft).
         """
-        self._verifier_dfa_complet("distinguishable_states")
+        self._verifier_dfa_complet("pair_table")
 
-        paires = {frozenset(p) for p in combinations(self.states, 2)}
-        distinguables = {
-            p for p in paires
+        etats = sorted(self.states, key=_cle_tri)
+        symboles = sorted(self.input_symbols, key=str)
+        paires = [frozenset(p) for p in combinations(etats, 2)]
+        passage = {
+            p: 0 for p in paires
             if len({(etat in self.final_states) for etat in p}) > 1
         }
 
+        numero = 0
         changement = True
         while changement:
             changement = False
-            for p in paires - distinguables:
-                e1, e2 = tuple(p)
-                for symbole in self.input_symbols:
+            numero += 1
+            for p in paires:
+                if p in passage:
+                    continue
+                e1, e2 = sorted(p, key=_cle_tri)
+                for symbole in symboles:
                     s1 = self.transitions[e1][symbole]
                     s2 = self.transitions[e2][symbole]
-                    if s1 != s2 and frozenset((s1, s2)) in distinguables:
-                        distinguables.add(p)
+                    if s1 != s2 and frozenset((s1, s2)) in passage:
+                        passage[p] = numero
                         changement = True
                         break
-        return distinguables
+        return {p: passage.get(p) for p in paires}
 
-    def pair_table_str(self):
-        """Représentation textuelle de la table des paires : une ligne
-        par état (sauf le premier), une colonne par état précédent,
-        'X' si la paire est distinguable. Complexité : celle de
-        `distinguishable_states`."""
-        distinguables = self.distinguishable_states()
+    def distinguishable_states(self):
+        """Ensemble des paires d'états distinguables (les paires de
+        `pair_table()` dont le passage n'est pas `None`). Complexité :
+        celle de `pair_table`."""
+        return {p for p, passage in self.pair_table().items()
+                if passage is not None}
+
+    def pair_table_str(self, show_round=False):
+        """Table triangulaire des paires en texte : une ligne par état
+        (sauf le premier), une colonne par état (sauf le dernier). Une
+        case contient `.` pour deux états équivalents, et sinon `X`, ou le
+        numéro de passage de `pair_table()` si `show_round` est vrai.
+
+        Exemple (`show_round=False`) :
+               1  2  3
+            2  X
+            3  X  .
+
+        Complexité : celle de `pair_table`.
+        """
+        table = self.pair_table()
         etats = sorted(self.states, key=_cle_tri)
-        lignes = []
-        for i, e2 in enumerate(etats[1:], start=1):
-            marques = [
-                "X" if frozenset((e1, e2)) in distinguables else "."
-                for e1 in etats[:i]
-            ]
-            lignes.append(f"{e2} | " + " ".join(marques))
-        entete = "    " + " ".join(etats[:-1])
-        return entete + "\n" + "\n".join(lignes)
 
-    def print_pair_table(self):
+        def case(p):
+            passage = table[p]
+            if passage is None:
+                return "."
+            return str(passage) if show_round else "X"
+
+        lignes_de_cases = [
+            [case(frozenset((a, b))) for a in etats[:i]]
+            for i, b in enumerate(etats) if i > 0
+        ]
+        etiquettes = [_nom_court(e) for e in etats]
+        largeur_etiquette = max(len(e) for e in etiquettes[1:])
+        largeur_case = max(
+            [len(e) for e in etiquettes[:-1]]
+            + [len(c) for ligne in lignes_de_cases for c in ligne]
+        )
+        lignes = [" " * largeur_etiquette + "".join(
+            "  " + e.rjust(largeur_case) for e in etiquettes[:-1]
+        )]
+        for etiquette, cases in zip(etiquettes[1:], lignes_de_cases):
+            lignes.append(
+                etiquette.ljust(largeur_etiquette)
+                + "".join("  " + c.rjust(largeur_case) for c in cases)
+            )
+        return "\n".join(lignes)
+
+    def print_pair_table(self, show_round=False):
         """Affiche la table des paires (voir `pair_table_str`)."""
-        print(self.pair_table_str())
+        print(self.pair_table_str(show_round=show_round))
 
     def equivalence_classes(self):
         """Partitionne les états en classes d'équivalence (états deux

@@ -385,7 +385,9 @@ class ConversionsMixin:
         """Expression régulière du langage, par élimination d'états dans
         l'ordre lexicographique des états. La sortie n'est volontairement
         pas simplifiée (pédagogique : chaque morceau correspond à une
-        étape de l'algorithme). Le langage vide donne `"∅"`.
+        étape de l'algorithme), et écrite dans le style du cours : toute
+        union entre parenthèses, parenthèses doublées sous une étoile
+        (`(b*|b*ab*a((b|ab*ab*a))*ab*)`). Le langage vide donne `"∅"`.
 
         Lève `ValueError` si un symbole de l'alphabet ne peut pas
         s'écrire dans une expression régulière (voir
@@ -394,17 +396,22 @@ class ConversionsMixin:
         Complexité : celle de `_eliminer_etats`, soit O(|Q|³).
         """
         self._verifier_symboles_pour_regex()
-        return to_string(self._eliminer_etats(self._ordre_lexicographique()))
+        return to_string(
+            self._eliminer_etats(self._ordre_lexicographique()), verbeux=True
+        )
 
     def to_regex_arden(self):
         """Expression régulière du langage, par résolution du système
-        d'équations avec le lemme d'Arden (ordre lexicographique). Même
-        langage que `to_regex()`, mais en général une écriture différente.
+        d'équations avec le lemme d'Arden (ordre lexicographique), écrite
+        dans le même style que `to_regex()`. Même langage que `to_regex()`,
+        mais l'écriture peut différer.
 
         Complexité : celle de `_resoudre_arden`, soit O(|Q|³).
         """
         self._verifier_symboles_pour_regex()
-        return to_string(self._resoudre_arden(self._ordre_lexicographique()))
+        return to_string(
+            self._resoudre_arden(self._ordre_lexicographique()), verbeux=True
+        )
 
     def to_regex_optimum(self):
         """Comme `to_regex()`, mais en essayant plusieurs ordres

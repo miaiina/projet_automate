@@ -63,6 +63,29 @@ Le rendu appelle directement le binaire `dot` (aucun paquet Python en plus,
 pas de conflit pygraphviz/manim). `a.show_diagram()` d'automata-lib reste
 disponible.
 
+## Compatibilité avec les notebooks du cours
+
+Les notebooks `Cours06`, `TD3`, `TD4` et `TD5` importent
+`from automata_extensions.fa.dfa import ExtendedDFA as DFA` (et idem pour
+`nfa`) : ces modules existent. Toutes les méthodes d'extension qu'ils
+appellent sont implémentées, et leurs sorties enregistrées servent de
+tests :
+
+- `pair_table_str(show_round=...)` et `print_pair_table(show_round=...)`
+  reproduisent exactement les tables de `Cours06` ;
+- `to_regex()` reproduit exactement le texte des TD (toute union entre
+  parenthèses, parenthèses doublées sous une étoile) ;
+- `to_regex_optimum()` donne une expression de même langage que celle du
+  cours, mais pas forcément écrite de la même façon.
+
+Pour rejouer un notebook de bout en bout avec votre environnement :
+
+```bash
+PYTHONPATH=~/projet_automate/automata-etendu \
+  jupyter nbconvert --to notebook --execute ~/projet_automate/ressources/TD3.ipynb \
+  --output-dir /tmp/essai_notebooks
+```
+
 ## Structure
 
 ```

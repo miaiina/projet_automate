@@ -213,14 +213,24 @@ def verifier_lettre(lettre):
         )
 
 
-def _avec_parentheses(expression):
-    return "(" + to_string(expression) + ")"
+def _avec_parentheses(expression, verbeux):
+    return "(" + to_string(expression, verbeux) + ")"
 
 
-def to_string(expression):
+def to_string(expression, verbeux=False):
     """Écrit l'expression avec la syntaxe d'automata-lib (`|`, `*`, `()`
-    pour le mot vide), en ne mettant de parenthèses que quand elles sont
-    nécessaires. Le langage vide s'écrit `∅`. Complexité : O(taille)."""
+    pour le mot vide). Le langage vide s'écrit `∅`. Complexité :
+    O(taille).
+
+    Deux styles de parenthèses :
+
+    - `verbeux=False` (défaut, style compact) : seulement les parenthèses
+      nécessaires. Exemple : `(b|ab*ab*a)*ab*`.
+    - `verbeux=True` (style du cours) : toute union est entre
+      parenthèses, même au sommet, et une étoile met des parenthèses
+      autour de tout ce qui n'est pas une lettre, ce qui double celles
+      d'une union. Exemple : `(b*|b*ab*a((b|ab*ab*a))*ab*)`.
+    """
     if isinstance(expression, Empty):
         return "∅"
     if isinstance(expression, Eps):
@@ -229,20 +239,24 @@ def to_string(expression):
         verifier_lettre(expression.char)
         return expression.char
     if isinstance(expression, Alt):
-        return "|".join(
-            _avec_parentheses(p) if isinstance(p, Alt) else to_string(p)
+        corps = "|".join(
+            _avec_parentheses(p, verbeux) if isinstance(p, Alt)
+            else to_string(p, verbeux)
             for p in expression.parts
         )
+        return "(" + corps + ")" if verbeux else corps
     if isinstance(expression, Cat):
         return "".join(
-            _avec_parentheses(p) if isinstance(p, Alt) else to_string(p)
+            _avec_parentheses(p, verbeux)
+            if isinstance(p, Alt) and not verbeux
+            else to_string(p, verbeux)
             for p in expression.parts
         )
     interieur = expression.inner
     texte = (
-        to_string(interieur)
+        to_string(interieur, verbeux)
         if isinstance(interieur, Sym)
-        else _avec_parentheses(interieur)
+        else _avec_parentheses(interieur, verbeux)
     )
     return texte + "*"
 

@@ -273,3 +273,51 @@ def test_aller_retour_automate_regex_automate(
         )
         for mot in tous_les_mots(automate.input_symbols, 6):
             assert automate.accepts_input(mot) == retour.accepts_input(mot), mot
+
+
+# ---------------------------------------------------------------------
+# Texte exact : sorties enregistrées du cours (TD3) et exemple de la doc
+# ---------------------------------------------------------------------
+
+def test_to_regex_exemple_de_la_doc(dfa_mod3):
+    assert dfa_mod3.to_regex() == "(b*|b*ab*a((b|ab*ab*a))*ab*)"
+
+
+def test_to_regex_identique_aux_sorties_du_cours_td3(
+    automate_fig_3_1_b, automate_fig_3_1_c, automate_fig_3_1_d,
+    automate_fig_3_1_e, automate_fig_3_1_f,
+):
+    assert automate_fig_3_1_b.to_regex() == "b*ab*a((a|b))*"
+    assert automate_fig_3_1_c.to_regex() == "aa((a|b))*"
+    assert automate_fig_3_1_d.to_regex() == (
+        "(b*ab*|b*ab*a((b|ab*ab*a))*ab*ab*)"
+    )
+    assert automate_fig_3_1_e.to_regex() == "(a|aa(aaa)*aa)"
+    assert automate_fig_3_1_f.to_regex() == (
+        "(a(ba)*|(b|a(ba)*(a|bb))((ab|(b|aa)(ba)*(a|bb)))*(b|aa)(ba)*)"
+    )
+
+
+def test_to_regex_optimum_donne_le_meme_langage_que_le_cours(
+    automate_fig_3_1_d, automate_fig_3_1_e,
+):
+    # Le cours donne (b|ab*ab*a)*ab* et (aaa)*a : l'écriture de
+    # `to_regex_optimum()` peut différer, le langage est le même (vraie
+    # équivalence de langages, pas des mots échantillons).
+    cas = [(automate_fig_3_1_d, "(b|ab*ab*a)*ab*", {'a', 'b'}),
+           (automate_fig_3_1_e, "(aaa)*a", {'a'})]
+    for automate, du_cours, alphabet in cas:
+        obtenu = ExtendedNFA.from_regex(
+            automate.to_regex_optimum(), input_symbols=alphabet)
+        attendu = ExtendedNFA.from_regex(du_cours, input_symbols=alphabet)
+        assert obtenu.is_equivalent(attendu)
+
+
+def test_styles_de_parentheses():
+    expression = star(alt(a, b))
+    assert to_string(expression) == "(a|b)*"
+    assert to_string(expression, verbeux=True) == "((a|b))*"
+    assert to_string(alt(a, b), verbeux=True) == "(a|b)"
+    assert to_string(cat(a, alt(b, c)), verbeux=True) == "a(b|c)"
+    assert to_string(star(cat(a, b)), verbeux=True) == "(ab)*"
+    assert to_string(alt(a, EPS), verbeux=True) == "(a|())"
