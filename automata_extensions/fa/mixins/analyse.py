@@ -23,7 +23,7 @@ from itertools import combinations
 
 from automata.fa.dfa import DFA
 
-from ..fa import _cle_tri
+from ..fa import _as_set, _cle_tri
 
 
 def _nom_court(etat):
@@ -106,8 +106,22 @@ class AnalyseMixin:
         )
 
     # ------------------------------------------------------------------
-    # Complétude (prérequis des méthodes ci-dessous)
+    # Déterminisme et complétude (prérequis des méthodes ci-dessous)
     # ------------------------------------------------------------------
+
+    def is_deterministic(self):
+        """Vrai si la fonction de transition est déterministe : au plus
+        un état cible par état et par symbole, et aucune
+        epsilon-transition. Un DFA l'est toujours. Complexité :
+        O(|Q| · |Σ|)."""
+        if isinstance(self, DFA):
+            return True
+        for table in self.transitions.values():
+            for symbole, cibles in table.items():
+                cibles = _as_set(cibles)
+                if (symbole == "" and cibles) or len(cibles) > 1:
+                    return False
+        return True
 
     def is_complete(self):
         """Vrai si chaque état a une transition définie pour chaque

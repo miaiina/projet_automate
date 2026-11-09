@@ -8,7 +8,10 @@ from ..regex.regex import lettres, parse, thompson
 from .fa import ExtendedFA, _as_set
 from .mixins.analyse import AnalyseMixin
 from .mixins.conversions import ConversionsMixin
+from .mixins.algebre import AlgebreMixin
 from .mixins.grammaire import GrammaireMixin
+from .mixins.graphe import GrapheMixin
+from .mixins.quotients import QuotientMixin
 from .mixins.operations import OperationsMixin
 from .mixins.relations import RelationsMixin
 from .mixins.visualisation import VisualisationMixin
@@ -19,6 +22,9 @@ class ExtendedNFA(
     ConversionsMixin,
     OperationsMixin,
     RelationsMixin,
+    GrapheMixin,
+    QuotientMixin,
+    AlgebreMixin,
     GrammaireMixin,
     VisualisationMixin,
     ExtendedFA,
@@ -33,6 +39,21 @@ class ExtendedNFA(
         for targets in self.transitions.get(state, {}).values():
             successors |= _as_set(targets)
         return successors
+
+    def copy(self):
+        """Copie indépendante de l'automate (mêmes états, alphabet,
+        transitions, état initial et états finaux). Complexité :
+        O(|Q| · |Σ| · d)."""
+        return ExtendedNFA(
+            states=set(self.states),
+            input_symbols=set(self.input_symbols),
+            transitions={
+                e: {a: set(_as_set(c)) for a, c in t.items()}
+                for e, t in self.transitions.items()
+            },
+            initial_state=self.initial_state,
+            final_states=set(self.final_states),
+        )
 
     def _labeled_edges(self):
         """Triplets (source, symbole, cible), epsilon-transitions

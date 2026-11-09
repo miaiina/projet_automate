@@ -99,7 +99,10 @@ automata_extensions/
 │       ├── analyse.py         # accessibilité, trim, minimisation...
 │       ├── conversions.py     # to_dfa, to_regex, epsilon-transitions, reverse, Brzozowski...
 │       ├── operations.py      # produit, intersection, union, différence, complément, concaténation, étoile
-│       ├── relations.py       # vide/fini, plus court mot, inclusion, équivalence, isomorphisme
+│       ├── relations.py       # vide/fini/universel, plus court mot, inclusion, équivalence, isomorphisme
+│       ├── graphe.py          # parcours, cycles, composantes fortement connexes, sous-automate
+│       ├── quotients.py       # quotients par un mot, résiduels, fusion d'états
+│       ├── algebre.py         # monoïde syntaxique, morphismes, projection, préfixes
 │       ├── grammaire.py       # to_grammar, derivation_tree
 │       └── visualisation.py   # dot, svg/png/pdf, tikz/latex, table, trace, animation
 ├── grammar/ # grammar.py : Grammar, Rule, DerivationStep (phase 5)
@@ -115,6 +118,8 @@ tests/
 ├── test_regex.py                # phases 3b, 3c (to_regex, Arden, analyseur, Thompson)
 ├── test_relations.py            # phase 4 (opérations et relations)
 ├── test_grammaire.py            # phase 5 (grammaires, dérivations)
+├── test_graphe.py               # phase 7a (graphe, cycles, composantes connexes)
+├── test_quotients_algebre.py    # phase 7a (quotients, monoïde, morphismes, préfixes)
 └── test_mixins_visualisation.py # phase 6
 ```
 
@@ -135,4 +140,5 @@ pytest tests/test_mixins_analyse.py -v # un mixin en particulier
 - [x] Phase 4 — opérations (product, intersection, union, difference, symmetric_difference, complement, concatenation, kleene_star) et relations (is_empty, is_finite, shortest_word, is_included_in, is_equivalent, is_disjoint_from, is_isomorphic_to, contre-exemples)
 - [x] Phase 5 — grammaires régulières : `to_grammar`, `derivation_tree`, `ExtendedNFA.from_grammar` / `from_grammar_string` (paquet `automata_extensions/grammar/`)
 - [x] Phase 6 — visualisation : `dot`, `svg`/`png`/`pdf`/`save` (Graphviz), `tikz`/`latex`, `transition_table`, `execution_trace`, `animate`, affichage automatique en notebook
-- [ ] Phase 7 — squelettes pda/regex/tm (en attente de précisions)
+- [x] Phase 7a — rattrapage de la doc : graphe (`is_accessible`, `reachable_states`, `bfs`, `dfs`, `has_cycle`, `strongly_connected_components`, `induced_subautomaton`, `copy`...), quotients (`left_quotient_word`, `right_quotient_word`, `residual_automaton`, `quotient_by`), algèbre (`syntactic_monoid`, `is_morphism_to`, `project`, `is_prefix_closed`, `prefix_closed_sublanguage`), `is_deterministic`, `is_universal`
+- [ ] Phase 7b — squelettes pda/regex/tm (en attente de précisions)

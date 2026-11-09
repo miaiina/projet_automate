@@ -6,7 +6,10 @@ from automata.fa.dfa import DFA
 from .fa import ExtendedFA
 from .mixins.analyse import AnalyseMixin
 from .mixins.conversions import ConversionsMixin
+from .mixins.algebre import AlgebreMixin
 from .mixins.grammaire import GrammaireMixin
+from .mixins.graphe import GrapheMixin
+from .mixins.quotients import QuotientMixin
 from .mixins.operations import OperationsMixin
 from .mixins.relations import RelationsMixin
 from .mixins.visualisation import VisualisationMixin
@@ -17,6 +20,9 @@ class ExtendedDFA(
     ConversionsMixin,
     OperationsMixin,
     RelationsMixin,
+    GrapheMixin,
+    QuotientMixin,
+    AlgebreMixin,
     GrammaireMixin,
     VisualisationMixin,
     ExtendedFA,
@@ -36,6 +42,19 @@ class ExtendedDFA(
         """Pour un DFA : un seul état cible par symbole.
         Complexité : O(|Σ|)."""
         return set(self.transitions.get(state, {}).values())
+
+    def copy(self):
+        """Copie indépendante de l'automate (mêmes états, alphabet,
+        transitions, état initial, états finaux et option
+        `allow_partial`). Complexité : O(|Q| · |Σ|)."""
+        return ExtendedDFA(
+            states=set(self.states),
+            input_symbols=set(self.input_symbols),
+            transitions={e: dict(t) for e, t in self.transitions.items()},
+            initial_state=self.initial_state,
+            final_states=set(self.final_states),
+            allow_partial=self.allow_partial,
+        )
 
     def _labeled_edges(self):
         """Triplets (source, symbole, cible). Complexité : O(|Q| · |Σ|)."""

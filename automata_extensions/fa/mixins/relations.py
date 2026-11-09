@@ -21,6 +21,7 @@ from collections import deque
 
 from automata.fa.dfa import DFA
 
+from .graphe import _a_un_cycle
 from .operations import _vers_dfa
 
 
@@ -36,35 +37,6 @@ def _accessibles(dfa):
                 vus.add(suivant)
                 a_traiter.append(suivant)
     return vus
-
-
-def _a_un_cycle(automate):
-    """Vrai si le graphe de transitions (par `_successors`) contient un
-    cycle. Parcours en profondeur itératif, avec trois couleurs :
-    blanc (pas vu), gris (en cours), noir (terminé) ; un cycle existe
-    dès qu'on retombe sur un état gris. Complexité : O(|Q| + |E|)."""
-    blanc, gris, noir = 0, 1, 2
-    couleur = {etat: blanc for etat in automate.states}
-    for depart in automate.states:
-        if couleur[depart] != blanc:
-            continue
-        couleur[depart] = gris
-        pile = [(depart, iter(automate._successors(depart)))]
-        while pile:
-            etat, suivants = pile[-1]
-            for suivant in suivants:
-                if couleur[suivant] == gris:
-                    return True
-                if couleur[suivant] == blanc:
-                    couleur[suivant] = gris
-                    pile.append(
-                        (suivant, iter(automate._successors(suivant)))
-                    )
-                    break
-            else:
-                couleur[etat] = noir
-                pile.pop()
-    return False
 
 
 class RelationsMixin:
@@ -90,6 +62,12 @@ class RelationsMixin:
         """
         utile = self.remove_epsilon_transitions().trim()
         return not _a_un_cycle(utile)
+
+    def is_universal(self):
+        """Vrai si l'automate reconnaît tous les mots sur son alphabet
+        (Sigma*) : son complément est vide. Complexité : celle de
+        `complement` plus O(|Q| + |E|)."""
+        return self.complement().is_empty()
 
     def shortest_word(self):
         """Plus court mot du langage (le plus petit dans l'ordre
