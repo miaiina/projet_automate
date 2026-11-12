@@ -1,5 +1,7 @@
 # automata-etendu
 
+> **Pour apprendre à s'en servir : lisez [GUIDE.md](GUIDE.md)** (un exemple par famille de méthodes, avec les vraies sorties).
+
 Extension de [`automata-lib`](https://pypi.org/project/automata-lib/) 9.2.0
 (non modifiée) pour se rapprocher des fonctionnalités d'
 [AUDE](https://aude.imag.fr/), via héritage et mixins.
@@ -103,6 +105,7 @@ automata_extensions/
 │       ├── graphe.py          # parcours, cycles, composantes fortement connexes, sous-automate
 │       ├── quotients.py       # quotients par un mot, résiduels, fusion d'états
 │       ├── algebre.py         # monoïde syntaxique, morphismes, projection, préfixes
+│       ├── pas_a_pas.py       # déterminisation, partitions de Moore, élimination d'états, étape par étape
 │       ├── grammaire.py       # to_grammar, derivation_tree
 │       └── visualisation.py   # dot, svg/png/pdf, tikz/latex, table, trace, animation
 ├── grammar/ # grammar.py : Grammar, Rule, DerivationStep (phase 5)
@@ -120,6 +123,8 @@ tests/
 ├── test_grammaire.py            # phase 5 (grammaires, dérivations)
 ├── test_graphe.py               # phase 7a (graphe, cycles, composantes connexes)
 ├── test_quotients_algebre.py    # phase 7a (quotients, monoïde, morphismes, préfixes)
+├── test_pas_a_pas.py            # phase 8 (mode pas à pas)
+├── test_guide.py                # exécute les extraits de GUIDE.md
 └── test_mixins_visualisation.py # phase 6
 ```
 
@@ -141,4 +146,5 @@ pytest tests/test_mixins_analyse.py -v # un mixin en particulier
 - [x] Phase 5 — grammaires régulières : `to_grammar`, `derivation_tree`, `ExtendedNFA.from_grammar` / `from_grammar_string` (paquet `automata_extensions/grammar/`)
 - [x] Phase 6 — visualisation : `dot`, `svg`/`png`/`pdf`/`save` (Graphviz), `tikz`/`latex`, `transition_table`, `execution_trace`, `animate`, affichage automatique en notebook
 - [x] Phase 7a — rattrapage de la doc : graphe (`is_accessible`, `reachable_states`, `bfs`, `dfs`, `has_cycle`, `strongly_connected_components`, `induced_subautomaton`, `copy`...), quotients (`left_quotient_word`, `right_quotient_word`, `residual_automaton`, `quotient_by`), algèbre (`syntactic_monoid`, `is_morphism_to`, `project`, `is_prefix_closed`, `prefix_closed_sublanguage`), `is_deterministic`, `is_universal`
+- [x] Phase 8 — mode pas à pas : `determinization_steps`/`determinization_table`, `moore_partitions`/`moore_partitions_str`, `to_regex_steps`/`to_regex_steps_str` (avec choix de l'ordre d'élimination) ; guide d'utilisation `GUIDE.md` testé
 - [ ] Phase 7b — squelettes pda/regex/tm (en attente de précisions)

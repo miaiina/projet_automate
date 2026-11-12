@@ -82,6 +82,31 @@ def _echapper_latex(texte):
     return "".join(remplacements.get(c, c) for c in texte)
 
 
+def _formater_table(etiquettes, en_tetes, lignes_de_cellules):
+    """Met en forme une table de texte : `etiquettes` (une par ligne,
+    alignées à droite), `en_tetes` (une par colonne) et
+    `lignes_de_cellules` (une liste de cellules par ligne). Les colonnes
+    sont séparées par ` | ` et l'en-tête est souligné."""
+    largeur0 = max(len(e) for e in etiquettes)
+    largeurs = [
+        max([len(en_tetes[j])] + [len(l[j]) for l in lignes_de_cellules])
+        for j in range(len(en_tetes))
+    ]
+    lignes = [
+        " | ".join(["".ljust(largeur0)]
+                   + [en_tetes[j].ljust(largeurs[j])
+                      for j in range(len(en_tetes))]),
+        "-+-".join(["-" * largeur0] + ["-" * w for w in largeurs]),
+    ]
+    for etiquette, cellules in zip(etiquettes, lignes_de_cellules):
+        lignes.append(
+            " | ".join([etiquette.rjust(largeur0)]
+                       + [cellules[j].ljust(largeurs[j])
+                          for j in range(len(en_tetes))])
+        )
+    return "\n".join(ligne.rstrip() for ligne in lignes)
+
+
 def _distance_point_segment(point, debut, fin):
     """Distance du point au segment [debut, fin] (coordonnées (x, y))."""
     (px, py), (ax, ay), (bx, by) = point, debut, fin
@@ -420,24 +445,7 @@ class VisualisationMixin:
         lignes_cellules = [
             [cellule(e, s) for s in symboles] for e in etats
         ]
-        largeur0 = max(len(e) for e in etiquettes)
-        largeurs = [
-            max([len(en_tetes[j])] + [len(l[j]) for l in lignes_cellules])
-            for j in range(len(symboles))
-        ]
-        lignes = [
-            " | ".join(["".ljust(largeur0)]
-                       + [en_tetes[j].ljust(largeurs[j])
-                          for j in range(len(symboles))]),
-            "-+-".join(["-" * largeur0] + ["-" * w for w in largeurs]),
-        ]
-        for etiquette, cellules in zip(etiquettes, lignes_cellules):
-            lignes.append(
-                " | ".join([etiquette.rjust(largeur0)]
-                           + [cellules[j].ljust(largeurs[j])
-                              for j in range(len(symboles))])
-            )
-        return "\n".join(lignes)
+        return _formater_table(etiquettes, en_tetes, lignes_cellules)
 
     # ------------------------------------------------------------------
     # Animation HTML

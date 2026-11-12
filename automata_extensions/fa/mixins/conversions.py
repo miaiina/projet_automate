@@ -253,7 +253,7 @@ class ConversionsMixin:
         epsilon-transition, sinon la lettre."""
         return EPS if symbole == EPSILON else Sym(symbole)
 
-    def _eliminer_etats(self, ordre, simplificateur=None):
+    def _eliminer_etats(self, ordre, simplificateur=None, journal=None):
         """Élimination d'états : renvoie l'expression (noeud d'arbre) du
         langage reconnu.
 
@@ -267,6 +267,12 @@ class ConversionsMixin:
         `simplificateur`, s'il est donné, est appliqué à chaque arête
         modifiée (utilisé par les variantes `optimum`).
 
+        `journal`, s'il est donné (une liste), reçoit une entrée
+        (état supprimé, arêtes) avant toute suppression (état supprimé :
+        `None`) puis après chaque suppression ; `arêtes` est un
+        dictionnaire {(source, cible): expression}, où les états ajoutés
+        s'appellent "début" et "fin" (utilisé par `to_regex_steps`).
+
         Complexité : O(|Q|³) opérations sur des expressions (dont la
         taille peut croître exponentiellement dans le pire cas).
         """
@@ -279,6 +285,19 @@ class ConversionsMixin:
         table[(debut, self.initial_state)] = EPS
         for final in self.final_states:
             table[(final, fin)] = alt(table.get((final, fin), EMPTY), EPS)
+
+        def instantane():
+            def nom(etat):
+                if etat is debut:
+                    return "début"
+                if etat is fin:
+                    return "fin"
+                return etat
+
+            return {(nom(p), nom(q)): r for (p, q), r in table.items()}
+
+        if journal is not None:
+            journal.append((None, instantane()))
 
         for supprime in ordre:
             boucle = table.pop((supprime, supprime), None)
@@ -302,6 +321,8 @@ class ConversionsMixin:
                     if simplificateur is not None:
                         nouveau = simplificateur(nouveau)
                     table[(p, q)] = nouveau
+            if journal is not None:
+                journal.append((supprime, instantane()))
 
         return table.get((debut, fin), EMPTY)
 

@@ -13,6 +13,7 @@ from .mixins.grammaire import GrammaireMixin
 from .mixins.graphe import GrapheMixin
 from .mixins.quotients import QuotientMixin
 from .mixins.operations import OperationsMixin
+from .mixins.pas_a_pas import PasAPasMixin
 from .mixins.relations import RelationsMixin
 from .mixins.visualisation import VisualisationMixin
 
@@ -21,6 +22,7 @@ class ExtendedNFA(
     AnalyseMixin,
     ConversionsMixin,
     OperationsMixin,
+    PasAPasMixin,
     RelationsMixin,
     GrapheMixin,
     QuotientMixin,
